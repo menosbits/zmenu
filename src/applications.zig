@@ -1,15 +1,23 @@
 const std = @import("std");
 const testing = std.testing;
 
+/// Location: a struct that represents a candidate directory to search for
+/// .desktop files.
+///
+/// Fields:
+/// - path: path string.
+/// - home_dir: true if path should be joined to $HOME.
 const Location = struct {
     path: []const u8,
     home_dir: bool,
 
+    /// Small convenience helper used by callers to detect HOME-based locations.
     fn at_home(self: @This()) bool {
         return self.home_dir;
     }
 };
 
+/// Default application's locations to probe.
 var locations = [6]Location{
     .{ .path = "/usr/share/applications/", .home_dir = false },
     .{ .path = "/usr/local/share/applications/", .home_dir = false },
@@ -19,22 +27,42 @@ var locations = [6]Location{
     .{ .path = "/.local/share/applications/wine/Programs/", .home_dir = true },
 };
 
+/// Application: a struct that represents a discovered .desktop file.
+///
+/// Fields:
+/// - path: a slice representing the application's path.
+/// - description: the application's description.
+/// - command: the command to run the application.
+/// - terminal: whether or not the application should be runned in terminal.
 pub const Application = struct {
     path: []const u8,
     description: []const u8 = "",
     command: []const u8 = "",
     terminal: bool = false,
 
+    /// Construct an Application with the given path slice.
     fn create(path: []const u8) Application {
         return Application{ .path = path };
     }
 
-    fn destroy(self: @This(), allocator: std.mem.Allocator) void {
+    /// Free any owned memory inside the Application using allocator.
+    /// After calling destroy, the Application value must not be used again.
+    pub fn destroy(self: @This(), allocator: std.mem.Allocator) void {
         allocator.free(self.path);
     }
 };
 
-// list every file in path and returns a slice of apps structs
+/// Enumerate location.path and return an owned slice of Application entries
+/// for every file whose extension is ".desktop".
+///
+/// On success returns a slice allocated with allocator. The caller must free
+/// it.
+///
+/// Each Application.path is an owned allocation produced with std.mem.concat
+/// using allocator. Application.destroy frees it.
+///
+/// If the directory does not exist or cannot be opened, the function returns
+/// an empty owned slice — callers must always free it.
 fn list_app_files(allocator: std.mem.Allocator, io: std.Io, location: Location) ![]Application {
     var app_list = try std.ArrayList(Application).initCapacity(allocator, 1);
     errdefer {
@@ -155,12 +183,19 @@ test "list_app_files failing leaks" {
     try testing.expectError(error.OutOfMemory, files);
 }
 
-// list every app in system and parse their files
+/// Iterate over the global locations array, resolving HOME-based entries
+/// by joining with the HOME environment variable (obtained from env_vars),
+/// call list_app_files for each location, and append results into an
+/// aggregated owned slice returned to the caller.
+///
+/// Caller responsibilities:
+/// - free each Application.path via Application.destroy(allocator)
+/// - free the returned slice with allocator.free(slice)
 pub fn find(allocator: std.mem.Allocator, io: std.Io, env_vars: *std.process.Environ.Map) ![]Application {
     var app_list = try std.ArrayList(Application).initCapacity(allocator, 1);
     errdefer app_list.deinit(allocator);
 
-    // list app files
+    // Get application's files locations
     var new_location: ?Location = null;
     for (locations) |location| {
         if (location.at_home()) {
@@ -174,7 +209,11 @@ pub fn find(allocator: std.mem.Allocator, io: std.Io, env_vars: *std.process.Env
         const listed_apps = try list_app_files(allocator, io, new_location.?);
         app_list.appendSlice(allocator, listed_apps) catch continue;
     }
-    // parse app file
+
+    // Parse application's files
+    for (app_list.items) |*app| {
+        parse(app);
+    }
 
     return app_list.toOwnedSlice(allocator);
 }
