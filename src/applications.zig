@@ -290,65 +290,6 @@ test "list_app_files failing leaks" {
     try testing.expectError(error.OutOfMemory, files);
 }
 
-/// Read app's .desktop file and parse the following information:
-///
-/// - name: the application's name.
-/// - description: the application's description.
-/// - command: the command to run the application.
-/// - terminal: whether or not the application should be runned in terminal.
-///
-/// TODO: consider the system's locale.
-fn parse(app: *Application) void {
-    // TODO
-    app.name = "file tester";
-    app.description = "A test .desktop file";
-    app.command = "echo 'a test desktop file'";
-    app.terminal = true;
-}
-
-test "parse read .desktop test file" {
-    const expected = Application{
-        .path = "/tmp/znur_test/file.desktop",
-        .name = "file tester",
-        .description = "A test .desktop file",
-        .command = "echo 'a test desktop file'",
-        .terminal = true,
-    };
-
-    const test_location: Location = .{ .path = "/tmp/znur_test/", .home_dir = false };
-
-    const test_location_dir = try std.Io.Dir.cwd().createDirPathOpen(testing.io, test_location.path, .{
-        .open_options = .{ .iterate = true },
-        .permissions = .default_dir,
-    });
-    defer {
-        test_location_dir.close(testing.io);
-        std.Io.Dir.cwd().deleteDir(testing.io, test_location.path) catch {};
-    }
-
-    const test_file = try std.Io.Dir.cwd().createFile(testing.io, expected.path, .{ .exclusive = true });
-    defer {
-        test_file.close(testing.io);
-        std.Io.Dir.cwd().deleteFile(testing.io, expected.path) catch {};
-    }
-
-    const test_file_content =
-        \\Name=file tester
-        \\Comment=A test .desktop file
-        \\Type=Application
-        \\StartupNotify=false
-        \\Exec=echo 'a test desktop file'
-        \\Terminal=true
-    ;
-
-    try test_file.writeStreamingAll(testing.io, test_file_content);
-
-    var got = Application{ .path = "/tmp/znur_test/file.desktop" };
-    parse(&got);
-
-    try testing.expectEqualDeep(expected, got);
-}
-
 /// Iterate over the global locations array, resolving HOME-based entries
 /// by joining with the HOME environment variable (obtained from env_vars),
 /// call list_app_files for each location, and append results into an
@@ -382,4 +323,50 @@ pub fn find(allocator: std.mem.Allocator, io: std.Io, env_vars: *std.process.Env
     }
 
     return app_list.toOwnedSlice(allocator);
+}
+
+/// Iterate over a list of applications and extract its names, returning a
+/// slice with all applications' names
+pub fn get_apps_names(allocator: std.mem.Allocator, app_list: []Application) ![][]const u8 {
+    var apps_names = try std.ArrayList([]const u8).initCapacity(allocator, app_list.len / 2);
+    errdefer apps_names.deinit(allocator);
+
+    for (app_list) |app| {
+        try apps_names.append(allocator, app.name);
+    }
+
+    return apps_names.toOwnedSlice(allocator);
+}
+
+test "get_apps_names extract names" {
+    const allocator = testing.allocator;
+
+    const app_list = try allocator.dupe(Application, &[_]Application{
+        .{ .path = "/test/app1/", .name = "App1" },
+        .{ .path = "/test/app2/", .name = "App2" },
+        .{ .path = "/test/app3/", .name = "App3" },
+    });
+    defer allocator.free(app_list);
+
+    const expected = [_][]const u8{ "App1", "App2", "App3" };
+    const got = try get_apps_names(allocator, app_list);
+    defer allocator.free(got);
+
+    try testing.expectEqualSlices([]const u8, &expected, got);
+}
+
+test "get_apps_names failing leaks" {
+    const ta = testing.allocator;
+    var fa = testing.FailingAllocator.init(testing.allocator, .{ .fail_index = 0, .resize_fail_index = 0 });
+    const allocator = fa.allocator();
+
+    const app_list = try ta.dupe(Application, &[_]Application{
+        .{ .path = "/test/app1/", .name = "App1" },
+        .{ .path = "/test/app2/", .name = "App2" },
+        .{ .path = "/test/app3/", .name = "App3" },
+    });
+    defer ta.free(app_list);
+
+    const got = get_apps_names(allocator, app_list);
+    try testing.expectError(error.OutOfMemory, got);
 }
