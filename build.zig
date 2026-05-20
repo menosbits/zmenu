@@ -4,8 +4,8 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{ .preferred_optimize_mode = .ReleaseSafe });
 
-    const apps = b.addModule("applications", .{
-        .root_source_file = b.path("src/applications.zig"),
+    const apps = b.addModule("apps", .{
+        .root_source_file = b.path("src/apps.zig"),
         .target = target,
     });
 
@@ -16,7 +16,7 @@ pub fn build(b: *std.Build) void {
             .target = target,
             .optimize = optimize,
             .imports = &.{
-                .{ .name = "applications", .module = apps },
+                .{ .name = "apps", .module = apps },
             },
         }),
     });
