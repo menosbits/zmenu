@@ -7,6 +7,12 @@
     // original project's identity. Thus it is recommended to leave the comment
     // on the following line intact, so that it shows up in code reviews that
     // modify the field.
+    .dependencies = .{
+        .zigzag = .{
+            .url = "git+https://github.com/meszmate/zigzag?ref=main#1187d164073cbab1965476cbc9ebd31d3d2460aa",
+            .hash = "zigzag-0.1.2-YXwYS73qEQD51GHfONVN8Bas1RpyN2y5P2DLuLQUAhRZ",
+        },
+    },
     .fingerprint = 0x8bcce46d178f5385, // Changing this has security and trust implications.
     .minimum_zig_version = "0.16.0",
     .paths = .{

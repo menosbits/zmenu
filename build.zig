@@ -23,6 +23,12 @@ pub fn build(b: *std.Build) void {
 
     b.installArtifact(exe);
 
+    const zigzag = b.dependency("zigzag", .{
+        .target = target,
+        .optimize = optimize,
+    });
+    exe.root_module.addImport("zigzag", zigzag.module("zigzag"));
+
     const run_step = b.step("run", "Run the app");
     const run_cmd = b.addRunArtifact(exe);
     run_cmd.step.dependOn(b.getInstallStep());
