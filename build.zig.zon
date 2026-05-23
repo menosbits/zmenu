@@ -1,5 +1,5 @@
 .{
-    .name = .znur,
+    .name = .zmenu,
     .version = "0.1.0",
     // When forking a Zig project, this id should be regenerated (delete the
     // field and run `zig build`) if the upstream project is still maintained.
@@ -13,7 +13,7 @@
             .hash = "zigzag-0.1.2-YXwYS73qEQD51GHfONVN8Bas1RpyN2y5P2DLuLQUAhRZ",
         },
     },
-    .fingerprint = 0x8bcce46d178f5385, // Changing this has security and trust implications.
+    .fingerprint = 0x2901eafc27c34739, // Changing this has security and trust implications.
     .minimum_zig_version = "0.16.0",
     .paths = .{
         "build.zig",

@@ -121,7 +121,7 @@ pub const Application = struct {
     test "parse_data read .desktop test file" {
         const allocator = testing.allocator;
         const expected = Application{
-            .path = try allocator.dupe(u8, "/tmp/znur_test/file.desktop"),
+            .path = try allocator.dupe(u8, "/tmp/zmenu_test/file.desktop"),
             .name = try allocator.dupe(u8, "file tester"),
             .description = try allocator.dupe(u8, "A test .desktop file"),
             .command = try allocator.dupe(u8, "echo 'a test desktop file'"),
@@ -129,7 +129,7 @@ pub const Application = struct {
         };
         defer expected.destroy(allocator);
 
-        const test_location: Location = .{ .path = "/tmp/znur_test/", .home_dir = false };
+        const test_location: Location = .{ .path = "/tmp/zmenu_test/", .home_dir = false };
 
         const test_location_dir = try std.Io.Dir.cwd().createDirPathOpen(testing.io, test_location.path, .{
             .open_options = .{ .iterate = true },
@@ -157,7 +157,7 @@ pub const Application = struct {
 
         try test_file.writeStreamingAll(testing.io, test_file_content);
 
-        var got = Application{ .path = try allocator.dupe(u8, "/tmp/znur_test/file.desktop") };
+        var got = Application{ .path = try allocator.dupe(u8, "/tmp/zmenu_test/file.desktop") };
         defer got.destroy(allocator);
 
         try got.parse_data(allocator, testing.io);
@@ -205,9 +205,9 @@ fn list_app_files(allocator: std.mem.Allocator, io: std.Io, location: Location) 
 
 test "list_app_files temp dir" {
     const allocator = testing.allocator;
-    const expected: []const u8 = "/tmp/znur_test/list_app_files.desktop";
+    const expected: []const u8 = "/tmp/zmenu_test/list_app_files.desktop";
 
-    const test_location: Location = .{ .path = "/tmp/znur_test/", .home_dir = false };
+    const test_location: Location = .{ .path = "/tmp/zmenu_test/", .home_dir = false };
 
     const test_location_dir = try std.Io.Dir.cwd().createDirPathOpen(testing.io, test_location.path, .{
         .open_options = .{ .iterate = true },
@@ -248,7 +248,7 @@ test "list_app_files nonexistent directory" {
 
 test "list_app_files empty directory" {
     const allocator = testing.allocator;
-    const test_location: Location = .{ .path = "/tmp/znur_test/", .home_dir = false };
+    const test_location: Location = .{ .path = "/tmp/zmenu_test/", .home_dir = false };
 
     const test_location_dir = try std.Io.Dir.cwd().createDirPathOpen(testing.io, test_location.path, .{
         .open_options = .{ .iterate = true },
@@ -268,7 +268,7 @@ test "list_app_files empty directory" {
 test "list_app_files failing leaks" {
     var fa = testing.FailingAllocator.init(testing.allocator, .{ .fail_index = 1, .resize_fail_index = 1 });
     const allocator = fa.allocator();
-    const test_location: Location = .{ .path = "/tmp/znur_test/", .home_dir = false };
+    const test_location: Location = .{ .path = "/tmp/zmenu_test/", .home_dir = false };
 
     const test_location_dir = try std.Io.Dir.cwd().createDirPathOpen(testing.io, test_location.path, .{
         .open_options = .{ .iterate = true },

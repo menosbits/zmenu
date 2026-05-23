@@ -20,7 +20,7 @@ pub const Model = struct {
         // Result list
         self.result_list = zz.List(apps.Application).init(ctx.persistent_allocator);
         self.result_list.show_item_count = true;
-        self.result_list.height = 10;
+        self.result_list.wrap_around = false;
 
         const Item = zz.List(apps.Application).Item;
 
@@ -71,9 +71,10 @@ pub const Model = struct {
 
         // zmenu Title
         var t_style = (zz.Style{})
+            .width(24)
             .fg(zz.Color.white)
-            .underline(true)
-            .inline_style(true);
+            .inline_style(true)
+            .alignH(.center);
 
         const title = t_style.render(ctx.allocator, "zmenu") catch "zmenu";
         const centered_title = zz.layout.placeCenter(ctx.allocator, w, 1, title) catch title;
@@ -99,7 +100,7 @@ pub const Model = struct {
         // Join everything
         const content = std.fmt.allocPrint(
             ctx.allocator,
-            "{s}\n{s}\n\n{s}",
+            "{s}\n\n{s}\n{s}",
             .{ centered_title, sb_view, rl_view },
         ) catch "Error!";
 
