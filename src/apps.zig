@@ -38,7 +38,7 @@ var locations = [6]Location{
 /// - description: the application's description.
 /// - command: the command to run the application.
 /// - terminal: whether or not the application should be runned in terminal.
-const Application = struct {
+pub const Application = struct {
     path: []const u8,
     name: []const u8 = "",
     description: []const u8 = "",
@@ -87,7 +87,7 @@ const Application = struct {
                 if (std.mem.eql(u8, in, "NoDisplay")) {
                     const tok = info_token.next();
                     if (tok) |value| {
-                        if (std.mem.eql(u8, value, "false")) self.display = false;
+                        if (std.mem.eql(u8, value, "true")) self.display = false;
                     }
                 }
                 if (std.mem.eql(u8, in, "Name")) {
@@ -330,85 +330,4 @@ pub fn find(allocator: std.mem.Allocator, io: std.Io, env_vars: *std.process.Env
     }
 
     return app_list.toOwnedSlice(allocator);
-}
-
-/// Iterate over a list of applications and extract its names, returning a
-/// slice with all applications' names
-pub fn get_apps_names(allocator: std.mem.Allocator, app_list: []Application) ![][]const u8 {
-    var apps_names_list = try std.ArrayList([]const u8).initCapacity(allocator, app_list.len);
-    errdefer apps_names_list.deinit(allocator);
-
-    for (app_list) |app| {
-        try apps_names_list.append(allocator, app.name);
-    }
-
-    const apps_names = try apps_names_list.toOwnedSlice(allocator);
-
-    std.mem.sort([]const u8, apps_names, {}, struct {
-        fn compare(_: void, a: []const u8, b: []const u8) bool {
-            var bufa: [96]u8 = undefined;
-            var bufb: [96]u8 = undefined;
-
-            const al = std.ascii.lowerString(&bufa, a);
-            const bl = std.ascii.lowerString(&bufb, b);
-
-            return std.mem.order(u8, al, bl) == .lt;
-        }
-    }.compare);
-
-    return apps_names;
-}
-
-test "get_apps_names extract names" {
-    const allocator = testing.allocator;
-
-    const app_list = try allocator.dupe(Application, &[_]Application{
-        .{ .path = "/test/app1/", .name = "App1" },
-        .{ .path = "/test/app2/", .name = "App2" },
-        .{ .path = "/test/app3/", .name = "App3" },
-    });
-    defer allocator.free(app_list);
-
-    const expected = [_][]const u8{ "App1", "App2", "App3" };
-    const got = try get_apps_names(allocator, app_list);
-    defer allocator.free(got);
-
-    try testing.expectEqualSlices([]const u8, &expected, got);
-}
-
-test "get_apps_names failing leaks" {
-    const ta = testing.allocator;
-    var fa = testing.FailingAllocator.init(testing.allocator, .{ .fail_index = 0, .resize_fail_index = 0 });
-    const allocator = fa.allocator();
-
-    const app_list = try ta.dupe(Application, &[_]Application{
-        .{ .path = "/test/app1/", .name = "App1" },
-        .{ .path = "/test/app2/", .name = "App2" },
-        .{ .path = "/test/app3/", .name = "App3" },
-    });
-    defer ta.free(app_list);
-
-    const got = get_apps_names(allocator, app_list);
-    try testing.expectError(error.OutOfMemory, got);
-}
-
-test "get_apps_names is sorted" {
-    const allocator = testing.allocator;
-    const app_list = try allocator.dupe(Application, &[_]Application{
-        .{ .path = "/test/app1/", .name = "App1" },
-        .{ .path = "/test/app2/", .name = "App2" },
-        .{ .path = "/test/app3/", .name = "App3" },
-    });
-    defer allocator.free(app_list);
-
-    const got = try get_apps_names(allocator, app_list);
-    defer allocator.free(got);
-
-    const is_sorted = std.sort.isSorted([]const u8, got, {}, struct {
-        fn compare(_: void, a: []const u8, b: []const u8) bool {
-            return std.mem.order(u8, a, b) == .lt;
-        }
-    }.compare);
-
-    try testing.expect(is_sorted);
 }
