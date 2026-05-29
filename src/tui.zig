@@ -1,10 +1,12 @@
 const std = @import("std");
 const zz = @import("zigzag");
 const apps = @import("apps");
+// const launcher = @import("launcher.zig");
 
 pub const Model = struct {
     search_bar: zz.TextInput,
     result_list: zz.List(apps.Application),
+    max_width: usize = 0,
     env: *std.process.Environ.Map,
 
     pub const Msg = union(enum) {
@@ -35,6 +37,8 @@ pub const Model = struct {
                     finded_apps[i],
                     finded_apps[i].name,
                 )) catch {};
+                if (finded_apps[i].name.len > self.max_width)
+                    self.max_width = finded_apps[i].name.len;
             }
         }
 
@@ -48,7 +52,12 @@ pub const Model = struct {
             .key => |k| {
                 switch (k.key) {
                     .escape => return .quit,
-                    .enter, .up, .down, .page_up, .page_down, .home, .end => {
+                    .enter => {
+                        self.result_list.handleKey(k);
+                        // const selected_app = self.result_list.selectedItem();
+                        // if (selected_app) launcher.app(selected_app);
+                    },
+                    .up, .down, .page_up, .page_down, .home, .end => {
                         self.result_list.handleKey(k);
                     },
                     .char, .backspace, .delete, .left, .right, .paste => {
@@ -68,10 +77,11 @@ pub const Model = struct {
         // Layout
         const w: u16 = @intCast(@min(ctx.width, std.math.maxInt(u16)));
         const h: u16 = @intCast(@min(ctx.height, std.math.maxInt(u16)));
+        const max_width: u16 = @intCast(self.max_width);
 
         // zmenu Title
         var t_style = (zz.Style{})
-            .width(24)
+            .width(max_width)
             .fg(zz.Color.white)
             .inline_style(true)
             .alignH(.center);
@@ -84,17 +94,17 @@ pub const Model = struct {
         const sb_box = (zz.Style{})
             .paddingLeft(2)
             .paddingRight(2)
-            .width(24)
-            .marginLeft((w - 24) / 2)
-            .marginRight((w - 24) / 2);
+            .width(max_width)
+            .marginLeft((w - max_width) / 2 - 1)
+            .marginRight((w - max_width) / 2 - 1);
         const sb_view = sb_box.render(ctx.allocator, search_bar) catch "Error";
 
         // Result list
         const result_list = self.result_list.view(ctx.allocator) catch "Error";
         const rl_box = (zz.Style{})
-            .width(24)
-            .marginLeft((w - 24) / 2)
-            .marginRight((w - 24) / 2);
+            .maxWidth(max_width)
+            .marginLeft((w - max_width) / 2 - 1)
+            .marginRight((w - max_width) / 2 - 1);
         const rl_view = rl_box.render(ctx.allocator, result_list) catch "Error";
 
         // Join everything
