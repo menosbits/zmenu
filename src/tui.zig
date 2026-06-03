@@ -47,15 +47,18 @@ pub const Model = struct {
         return .none;
     }
 
-    pub fn update(self: *Model, msg: Msg, _: *zz.Context) zz.Cmd(Msg) {
+    pub fn update(self: *Model, msg: Msg, ctx: *zz.Context) zz.Cmd(Msg) {
         switch (msg) {
             .key => |k| {
                 switch (k.key) {
                     .escape => return .quit,
                     .enter => {
                         self.result_list.handleKey(k);
-                        // const selected_app = self.result_list.selectedItem();
-                        // if (selected_app) launcher.app(selected_app);
+                        const selected_app = self.result_list.selectedValue();
+                        if (selected_app) |app| app.run(ctx.io) catch |e| {
+                            std.debug.print("error opening app: {any}\n", .{e});
+                        };
+                        return .quit;
                     },
                     .up, .down, .page_up, .page_down, .home, .end => {
                         self.result_list.handleKey(k);

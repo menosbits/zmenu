@@ -18,6 +18,7 @@ pub fn build(b: *std.Build) void {
             .imports = &.{
                 .{ .name = "apps", .module = apps },
             },
+            .link_libc = true,
         }),
     });
 

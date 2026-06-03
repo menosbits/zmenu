@@ -53,7 +53,7 @@ pub const Application = struct {
 
     /// Free any owned memory inside the Application using allocator.
     /// After calling destroy, the Application value must not be used again.
-    pub fn destroy(self: Application, allocator: std.mem.Allocator) void {
+    fn destroy(self: Application, allocator: std.mem.Allocator) void {
         allocator.free(self.path);
         allocator.free(self.name);
         allocator.free(self.description);
@@ -99,7 +99,9 @@ pub const Application = struct {
                 if (std.mem.eql(u8, in, "Exec")) {
                     const tok = info_token.next();
                     if (tok) |value| {
-                        self.command = try std.mem.Allocator.dupe(allocator, u8, value);
+                        var command_iter = std.mem.splitScalar(u8, value, ' ');
+                        const command = command_iter.next();
+                        if (command) |c| self.command = try std.mem.Allocator.dupe(allocator, u8, c);
                     }
                 }
                 if (std.mem.eql(u8, in, "Comment")) {
@@ -124,7 +126,7 @@ pub const Application = struct {
             .path = try allocator.dupe(u8, "/tmp/zmenu_test/file.desktop"),
             .name = try allocator.dupe(u8, "file tester"),
             .description = try allocator.dupe(u8, "A test .desktop file"),
-            .command = try allocator.dupe(u8, "echo 'a test desktop file'"),
+            .command = try allocator.dupe(u8, "echo"),
             .terminal = true,
         };
         defer expected.destroy(allocator);
@@ -163,6 +165,28 @@ pub const Application = struct {
         try got.parse_data(allocator, testing.io);
 
         try testing.expectEqualDeep(expected, got);
+    }
+
+    // Run the application and exit zmenu.
+    // TODO: Spawn the application in a terminal if self.terminal = true
+    pub fn run(self: Application, io: std.Io) !void {
+        const pid = std.os.linux.fork();
+
+        if (pid < 0) return error.ForkFailed;
+        if (pid == 0) {
+            const session_id = std.c.setsid();
+            if (session_id == -1) std.c.exit(1);
+
+            _ = try std.process.spawn(io, .{
+                .argv = &[_][]const u8{self.command},
+                .stdin = .ignore,
+                .stdout = .ignore,
+                .stderr = .ignore,
+                .pgid = session_id,
+            });
+        } //else {
+        //     std.process.exit(0);
+        // }
     }
 };
 
