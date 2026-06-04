@@ -35,11 +35,19 @@ pub fn build(b: *std.Build) void {
         .root_source_file = b.path("src/apps.zig"),
         .target = target,
     });
-
     const app_tests = b.addTest(.{
         .root_module = apps,
     });
     const run_app_tests = b.addRunArtifact(app_tests);
+
+    const utils = b.addModule("utils", .{
+        .root_source_file = b.path("src/utils.zig"),
+        .target = target,
+    });
+    const utils_tests = b.addTest(.{
+        .root_module = utils,
+    });
+    const run_utils_tests = b.addRunArtifact(utils_tests);
 
     const exe_tests = b.addTest(.{
         .root_module = exe.root_module,
@@ -49,4 +57,5 @@ pub fn build(b: *std.Build) void {
     const test_step = b.step("test", "Run tests");
     test_step.dependOn(&run_app_tests.step);
     test_step.dependOn(&run_exe_tests.step);
+    test_step.dependOn(&run_utils_tests.step);
 }

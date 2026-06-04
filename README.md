@@ -12,8 +12,9 @@ In tiled wayland compositor or tiled window manager, you'll only need a terminal
 
 ## Roadmap:
 - [x] TUI
-- [x] applicaiton information parser
+- [x] application information parser
 - [x] application runner
-- [ ] detect default terminal and open terminal apps in it
+- [x] detect default terminal and open terminal apps in it
+- [ ] correct bug in apps' names (read only desktop section of .desktop file)
 - [ ] config options
 - [ ] dmenu mode

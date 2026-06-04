@@ -54,7 +54,7 @@ pub const Model = struct {
                     .enter => {
                         self.result_list.handleKey(k);
                         const selected_app = self.result_list.selectedValue();
-                        if (selected_app) |app| app.run(ctx.io) catch |e| {
+                        if (selected_app) |app| app.run(ctx.allocator, ctx.io, self.env) catch |e| {
                             std.debug.print("error opening app: {any}\n", .{e});
                         };
                         return .quit;

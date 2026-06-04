@@ -100,9 +100,12 @@ pub const Application = struct {
                 if (std.mem.eql(u8, in, "Exec")) {
                     const tok = info_token.next();
                     if (tok) |value| {
-                        var command_iter = std.mem.splitScalar(u8, value, ' ');
+                        var command_iter = std.mem.splitScalar(u8, value, '%');
                         const command = command_iter.next();
-                        if (command) |c| self.command = try std.mem.Allocator.dupe(allocator, u8, c);
+                        if (command) |cmd| {
+                            const c = std.mem.trimEnd(u8, cmd, " ");
+                            self.command = try std.mem.Allocator.dupe(allocator, u8, c);
+                        }
                     }
                 }
                 if (std.mem.eql(u8, in, "Comment")) {
@@ -127,8 +130,8 @@ pub const Application = struct {
             .path = try allocator.dupe(u8, "/tmp/zmenu_test/file.desktop"),
             .name = try allocator.dupe(u8, "file tester"),
             .description = try allocator.dupe(u8, "A test .desktop file"),
-            .command = try allocator.dupe(u8, "echo"),
-            .terminal = true,
+            .command = try allocator.dupe(u8, "echo 'a desktop file'"),
+            .terminal = false,
         };
         defer expected.destroy(allocator);
 
@@ -154,8 +157,8 @@ pub const Application = struct {
             \\Comment=A test .desktop file
             \\Type=Application
             \\StartupNotify=false
-            \\Exec=echo 'a test desktop file'
-            \\Terminal=true
+            \\Exec=echo 'a desktop file'
+            \\Terminal=false
         ;
 
         try test_file.writeStreamingAll(testing.io, test_file_content);
@@ -168,25 +171,48 @@ pub const Application = struct {
         try testing.expectEqualDeep(expected, got);
     }
 
-    // Run the application and exit zmenu.
-    // TODO: Spawn the application in a terminal if self.terminal = true
-    pub fn run(self: Application, io: std.Io) !void {
+    // Run the application
+    pub fn run(self: Application, allocator: std.mem.Allocator, io: std.Io, env: *std.process.Environ.Map) !void {
+        var argv = try std.ArrayList([]const u8).initCapacity(allocator, 5);
+        defer argv.deinit(allocator);
+
         const pid = std.os.linux.fork();
 
         if (pid < 0) return error.ForkFailed;
         if (pid == 0) {
             const session_id = std.c.setsid();
-            if (session_id == -1) std.c.exit(1);
+            if (session_id == -1) return error.NewSessionFailed;
+
+            if (self.terminal) {
+                const term = try utils.get_terminal(allocator, io, env);
+                defer allocator.free(term);
+
+                try argv.appendSlice(allocator, term);
+                const shell = env.get("SHELL");
+                if (shell) |s| {
+                    try argv.append(allocator, s);
+                } else {
+                    try argv.append(allocator, "/bin/sh");
+                }
+                try argv.append(allocator, "-c");
+                try argv.append(allocator, self.command);
+            } else {
+                var args = std.mem.splitScalar(u8, self.command, ' ');
+                while (args.next()) |arg| {
+                    try argv.append(allocator, arg);
+                }
+            }
+
+            try utils.log(allocator, io, self, argv.items);
 
             _ = try std.process.spawn(io, .{
-                .argv = &[_][]const u8{self.command},
+                .argv = argv.items,
+                .environ_map = env,
                 .stdin = .ignore,
                 .stdout = .ignore,
                 .stderr = .ignore,
                 .pgid = session_id,
             });
-
-            try utils.log(io, self);
         }
     }
 };
