@@ -1,7 +1,6 @@
 const std = @import("std");
 const zz = @import("zigzag");
-const apps = @import("apps");
-// const launcher = @import("launcher.zig");
+const apps = @import("apps.zig");
 
 pub const Model = struct {
     search_bar: zz.TextInput,

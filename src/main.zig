@@ -1,5 +1,5 @@
 const std = @import("std");
-const apps = @import("apps");
+const apps = @import("apps.zig");
 const zz = @import("zigzag");
 const tui = @import("tui.zig");
 

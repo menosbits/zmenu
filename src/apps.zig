@@ -3,6 +3,7 @@
 
 const std = @import("std");
 const testing = std.testing;
+const utils = @import("utils.zig");
 
 /// Location: a struct that represents a candidate directory to search for
 /// .desktop files.
@@ -184,9 +185,9 @@ pub const Application = struct {
                 .stderr = .ignore,
                 .pgid = session_id,
             });
-        } //else {
-        //     std.process.exit(0);
-        // }
+
+            try utils.log(io, self);
+        }
     }
 };
 

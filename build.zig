@@ -4,20 +4,12 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{ .preferred_optimize_mode = .ReleaseSafe });
 
-    const apps = b.addModule("apps", .{
-        .root_source_file = b.path("src/apps.zig"),
-        .target = target,
-    });
-
     const exe = b.addExecutable(.{
         .name = "zmenu",
         .root_module = b.createModule(.{
             .root_source_file = b.path("src/main.zig"),
             .target = target,
             .optimize = optimize,
-            .imports = &.{
-                .{ .name = "apps", .module = apps },
-            },
             .link_libc = true,
         }),
     });
@@ -38,6 +30,11 @@ pub fn build(b: *std.Build) void {
     if (b.args) |args| {
         run_cmd.addArgs(args);
     }
+
+    const apps = b.addModule("apps", .{
+        .root_source_file = b.path("src/apps.zig"),
+        .target = target,
+    });
 
     const app_tests = b.addTest(.{
         .root_module = apps,
