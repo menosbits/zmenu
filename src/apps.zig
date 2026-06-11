@@ -80,7 +80,14 @@ pub const Application = struct {
         var f_reader = f_content.reader(io, f_buffer);
         var reader = &f_reader.interface;
 
+        var counter: u8 = 0;
+
         while (try reader.takeDelimiter('\n')) |line| {
+            if (std.mem.eql(u8, line, "[Desktop Entry]")) {
+                counter += 1;
+                continue;
+            }
+
             var info_token = std.mem.tokenizeScalar(u8, line, '=');
             const info_name = info_token.next();
 
@@ -94,6 +101,8 @@ pub const Application = struct {
                 if (std.mem.eql(u8, in, "Name")) {
                     const tok = info_token.next();
                     if (tok) |value| {
+                        counter += 1;
+                        if (counter > 2) break;
                         self.name = try std.mem.Allocator.dupe(allocator, u8, value);
                     }
                 }

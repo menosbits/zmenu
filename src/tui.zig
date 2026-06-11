@@ -16,7 +16,7 @@ pub const Model = struct {
         // Search bar
         self.search_bar = zz.TextInput.init(ctx.persistent_allocator);
         self.search_bar.setPlaceholder("Search...");
-        self.search_bar.setPrompt("? ");
+        self.search_bar.setPrompt(" ");
 
         // Result list
         self.result_list = zz.List(apps.Application).init(ctx.persistent_allocator);
