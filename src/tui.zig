@@ -2,11 +2,16 @@ const std = @import("std");
 const zz = @import("zigzag");
 const apps = @import("apps.zig");
 
+const Message = @import("config.zig").Message;
+const Config = @import("config.zig").Config;
+
 pub const Model = struct {
     search_bar: zz.TextInput,
     result_list: zz.List(apps.Application),
     max_width: usize = 0,
     env: *std.process.Environ.Map,
+    config: Config,
+    modal: zz.Modal,
 
     pub const Msg = union(enum) {
         key: zz.KeyEvent,
@@ -15,19 +20,21 @@ pub const Model = struct {
     pub fn init(self: *Model, ctx: *zz.Context) zz.Cmd(Msg) {
         // Search bar
         self.search_bar = zz.TextInput.init(ctx.persistent_allocator);
-        self.search_bar.setPlaceholder("Search...");
-        self.search_bar.setPrompt(" ");
+        self.search_bar.setPlaceholder(self.config.placeholder);
+        self.search_bar.setPrompt(self.config.prompt);
 
         // Result list
         self.result_list = zz.List(apps.Application).init(ctx.persistent_allocator);
         self.result_list.show_item_count = true;
         self.result_list.wrap_around = false;
 
+        // Modal for error messages
+        self.modal = zz.Modal.init();
+
+        // Apps
         const Item = zz.List(apps.Application).Item;
 
-        var gpa = std.heap.DebugAllocator(.{}){};
-        const allocator = gpa.allocator();
-        const finded_apps = apps.find(allocator, ctx.io, self.env) catch (&([_]apps.Application{}))[0..];
+        const finded_apps = apps.find(ctx.persistent_allocator, ctx.io, self.env) catch (&([_]apps.Application{}))[0..];
         defer ctx.persistent_allocator.free(finded_apps);
 
         for (0..finded_apps.len - 1) |i| {
@@ -49,15 +56,21 @@ pub const Model = struct {
     pub fn update(self: *Model, msg: Msg, ctx: *zz.Context) zz.Cmd(Msg) {
         switch (msg) {
             .key => |k| {
+                if (self.modal.isVisible()) {
+                    self.modal.handleKey(k);
+                    return .quit;
+                }
+
                 switch (k.key) {
                     .escape => return .quit,
                     .enter => {
                         self.result_list.handleKey(k);
                         const selected_app = self.result_list.selectedValue();
-                        if (selected_app) |app| app.run(ctx.allocator, ctx.io, self.env) catch |e| {
-                            std.debug.print("error opening app: {any}\n", .{e});
+                        if (selected_app) |app| app.run(ctx.allocator, ctx.io, self.env, &self.config) catch {
+                            self.modal = zz.Modal.err("Error", "Terminal not found!\nCheck your config.");
+                            self.modal.show();
                         };
-                        return .quit;
+                        if (!self.modal.isVisible()) return .quit;
                     },
                     .up, .down, .page_up, .page_down, .home, .end => {
                         self.result_list.handleKey(k);
@@ -76,6 +89,11 @@ pub const Model = struct {
     }
 
     pub fn view(self: *Model, ctx: *const zz.Context) []const u8 {
+        // Modal
+        if (self.modal.isVisible()) {
+            return self.modal.viewWithBackdrop(ctx.allocator, ctx.width, ctx.height) catch "Error";
+        }
+
         // Layout
         const w: u16 = @intCast(@min(ctx.width, std.math.maxInt(u16)));
         const h: u16 = @intCast(@min(ctx.height, std.math.maxInt(u16)));

@@ -4,6 +4,7 @@
 const std = @import("std");
 const testing = std.testing;
 const utils = @import("utils.zig");
+const Config = @import("config.zig").Config;
 
 /// Location: a struct that represents a candidate directory to search for
 /// .desktop files.
@@ -101,7 +102,7 @@ pub const Application = struct {
                 if (std.mem.eql(u8, in, "Name")) {
                     const tok = info_token.next();
                     if (tok) |value| {
-                        counter += 1;
+                        if (counter > 0) counter += 1;
                         if (counter > 2) break;
                         self.name = try std.mem.Allocator.dupe(allocator, u8, value);
                     }
@@ -181,9 +182,33 @@ pub const Application = struct {
     }
 
     // Run the application
-    pub fn run(self: Application, allocator: std.mem.Allocator, io: std.Io, env: *std.process.Environ.Map) !void {
+    pub fn run(self: Application, allocator: std.mem.Allocator, io: std.Io, env: *std.process.Environ.Map, config: *Config) !void {
         var argv = try std.ArrayList([]const u8).initCapacity(allocator, 5);
         defer argv.deinit(allocator);
+
+        if (self.terminal) {
+            const term = utils.get_terminal(allocator, io, config.terminal) catch {
+                config.*.terminal = null;
+                try utils.log(allocator, io, self, argv.items, config);
+                return error.TerminalNotFound;
+            };
+            defer allocator.free(term);
+
+            try argv.appendSlice(allocator, term);
+            const shell = env.get("SHELL");
+            if (shell) |s| {
+                try argv.append(allocator, s);
+            } else {
+                try argv.append(allocator, "/bin/sh");
+            }
+            try argv.append(allocator, "-c");
+            try argv.append(allocator, self.command);
+        } else {
+            var args = std.mem.splitScalar(u8, self.command, ' ');
+            while (args.next()) |arg| {
+                try argv.append(allocator, arg);
+            }
+        }
 
         const pid = std.os.linux.fork();
 
@@ -192,27 +217,7 @@ pub const Application = struct {
             const session_id = std.c.setsid();
             if (session_id == -1) return error.NewSessionFailed;
 
-            if (self.terminal) {
-                const term = try utils.get_terminal(allocator, io, env);
-                defer allocator.free(term);
-
-                try argv.appendSlice(allocator, term);
-                const shell = env.get("SHELL");
-                if (shell) |s| {
-                    try argv.append(allocator, s);
-                } else {
-                    try argv.append(allocator, "/bin/sh");
-                }
-                try argv.append(allocator, "-c");
-                try argv.append(allocator, self.command);
-            } else {
-                var args = std.mem.splitScalar(u8, self.command, ' ');
-                while (args.next()) |arg| {
-                    try argv.append(allocator, arg);
-                }
-            }
-
-            try utils.log(allocator, io, self, argv.items);
+            try utils.log(allocator, io, self, argv.items, config);
 
             _ = try std.process.spawn(io, .{
                 .argv = argv.items,

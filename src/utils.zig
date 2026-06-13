@@ -1,8 +1,9 @@
 const std = @import("std");
 const apps = @import("apps.zig");
 const testing = std.testing;
+const Config = @import("config.zig").Config;
 
-pub fn log(allocator: std.mem.Allocator, io: std.Io, app: apps.Application, full_cmd: [][]const u8) !void {
+pub fn log(allocator: std.mem.Allocator, io: std.Io, app: apps.Application, full_cmd: [][]const u8, config: *Config) !void {
     const path = "/tmp/.zmenu_log";
 
     const file = try std.Io.Dir.cwd().createFile(io, path, .{});
@@ -15,18 +16,29 @@ pub fn log(allocator: std.mem.Allocator, io: std.Io, app: apps.Application, full
     const fc = try std.mem.join(allocator, " ", full_cmd);
     defer allocator.free(fc);
 
-    try writer_interface.print("path: {s}\ncmd: {s}\nfull_cmd: {s}\nterm: {}\n", .{
+    try writer_interface.print("[Application]\npath: {s}\ncmd: {s}\nfull_cmd: {s}\nterm: {}\n", .{
         app.path,
         app.command,
         fc,
         app.terminal,
     });
+
+    if (config.terminal) |t| {
+        try writer_interface.print("\n[Config]\nterm: {s}\n", .{t});
+    } else if (app.terminal) {
+        try writer_interface.print("\n[Config]\nterm: ERROR! TERMINAL NOT FOUND!\n", .{});
+    }
     try writer_interface.flush();
 }
 
-pub fn get_terminal(allocator: std.mem.Allocator, io: std.Io, env: *std.process.Environ.Map) ![][]const u8 {
-    const term = env.get("TERM");
-    if (term) |t| {
+//TODO: print error if terminal is not found
+pub fn get_terminal(allocator: std.mem.Allocator, io: std.Io, terminal: ?[]const u8) ![][]const u8 {
+    if (terminal) |t| {
+        const full_path = try std.fmt.allocPrint(allocator, "/bin/{s}", .{t});
+        defer allocator.free(full_path);
+
+        std.Io.Dir.cwd().access(io, full_path, .{ .execute = true }) catch return error.TerminalNotFound;
+
         const term_cmd = try allocator.dupe([]const u8, &[_][]const u8{ t, "-e" });
         return term_cmd;
     } else {
@@ -67,19 +79,24 @@ pub fn get_terminal(allocator: std.mem.Allocator, io: std.Io, env: *std.process.
     return error.TerminalNotFound;
 }
 
-test "get_terminal" {
+test "get_terminal ghostty" {
     const allocator = testing.allocator;
 
-    var environ_map = try testing.environ.createMap(allocator);
-    try environ_map.put("TERM", "ghostty");
-    defer environ_map.deinit();
+    const config = Config{ .terminal = "ghostty" };
 
     const expected = try allocator.dupe([]const u8, &[_][]const u8{ "ghostty", "-e" });
     defer allocator.free(expected);
 
-    const got = try get_terminal(allocator, testing.io, &environ_map);
+    const got = try get_terminal(allocator, testing.io, config.terminal);
     defer allocator.free(got);
 
     try testing.expectEqualStrings(expected[0], got[0]);
     try testing.expectEqualStrings(expected[1], got[1]);
+}
+
+test "get_terminal not found" {
+    const allocator = testing.allocator;
+    const config = Config{ .terminal = "foot" };
+    const got = get_terminal(allocator, testing.io, config.terminal);
+    try testing.expectError(error.TerminalNotFound, got);
 }

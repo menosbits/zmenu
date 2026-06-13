@@ -15,5 +15,5 @@ In tiled wayland compositor or tiled window manager, you'll only need a terminal
 - [x] application information parser
 - [x] application runner
 - [x] detect default terminal and open terminal apps in it
-- [ ] config options
+- [x] config options
 - [ ] dmenu mode

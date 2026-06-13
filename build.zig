@@ -4,6 +4,11 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{ .preferred_optimize_mode = .ReleaseSafe });
 
+    const zigzag = b.dependency("zigzag", .{
+        .target = target,
+        .optimize = optimize,
+    });
+
     const exe = b.addExecutable(.{
         .name = "zmenu",
         .root_module = b.createModule(.{
@@ -16,10 +21,6 @@ pub fn build(b: *std.Build) void {
 
     b.installArtifact(exe);
 
-    const zigzag = b.dependency("zigzag", .{
-        .target = target,
-        .optimize = optimize,
-    });
     exe.root_module.addImport("zigzag", zigzag.module("zigzag"));
 
     const run_step = b.step("run", "Run the app");
