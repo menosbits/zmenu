@@ -16,6 +16,11 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
+    const uni = b.dependency("uni", .{
+        .target = target,
+        .optimize = optimize,
+    });
+
     const exe = b.addExecutable(.{
         .name = "zmenu",
         .root_module = b.createModule(.{
@@ -29,6 +34,7 @@ pub fn build(b: *std.Build) void {
     b.installArtifact(exe);
 
     exe.root_module.addImport("zigzag", zigzag.module("zigzag"));
+    exe.root_module.addImport("uni", uni.module("uni"));
 
     const run_step = b.step("run", "Run the app");
     const run_cmd = b.addRunArtifact(exe);

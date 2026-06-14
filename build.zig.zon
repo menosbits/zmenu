@@ -12,6 +12,10 @@
             .url = "git+https://github.com/meszmate/zigzag?ref=main#1187d164073cbab1965476cbc9ebd31d3d2460aa",
             .hash = "zigzag-0.1.2-YXwYS73qEQD51GHfONVN8Bas1RpyN2y5P2DLuLQUAhRZ",
         },
+        .uni = .{
+            .url = "git+https://github.com/menosbits/uni#99cecad287b38e26bdddbf883c495b3e4bfe3904",
+            .hash = "uni-0.9.0-tz1MSs6cAAA2mr5Iuc1EC-9VRZhN96tpfPWeuZ7nYmq_",
+        },
     },
     .fingerprint = 0x2901eafc27c34739, // Changing this has security and trust implications.
     .minimum_zig_version = "0.16.0",
