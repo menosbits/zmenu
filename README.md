@@ -1,19 +1,15 @@
 # zmenu
 
-![zmenu logo](images/logo.png)
+![zmenu screenshot](assets/screenshot.png)
+
+## Description
 
 A simple Zig application launcher.
 
 I've always loved using a terminal. Most of applications launcher are GUI apps. Why not use a terminal one?
 
-In tiled wayland compositor or tiled window manager, you'll only need a terminal!.
+In tiled wayland compositor or tiled window manager, all you need is a terminal!
 
-![zmenu screenshot](images/screenshot.png)
+## Documentation:
 
-## Roadmap:
-- [x] TUI
-- [x] application information parser
-- [x] application runner
-- [x] detect default terminal and open terminal apps in it
-- [x] config options
-- [ ] dmenu mode
+- TODO.
