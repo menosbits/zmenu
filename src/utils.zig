@@ -34,8 +34,14 @@ pub fn log(allocator: std.mem.Allocator, io: std.Io, app: apps.Application, full
 //TODO: print error if terminal is not found
 pub fn get_terminal(allocator: std.mem.Allocator, io: std.Io, terminal: ?[]const u8) ![][]const u8 {
     if (terminal) |t| {
-        const full_path = try std.fmt.allocPrint(allocator, "/bin/{s}", .{t});
+        var full_path: []const u8 = undefined;
         defer allocator.free(full_path);
+
+        if (std.mem.startsWith(u8, t, "/")) {
+            full_path = try allocator.dupe(u8, t);
+        } else {
+            full_path = try std.fmt.allocPrint(allocator, "/bin/{s}", .{t});
+        }
 
         std.Io.Dir.cwd().access(io, full_path, .{ .execute = true }) catch return error.TerminalNotFound;
 
@@ -79,12 +85,27 @@ pub fn get_terminal(allocator: std.mem.Allocator, io: std.Io, terminal: ?[]const
     return error.TerminalNotFound;
 }
 
-test "get_terminal ghostty" {
+test "get_terminal relative path" {
     const allocator = testing.allocator;
 
     const config = Config{ .terminal = "ghostty" };
 
     const expected = try allocator.dupe([]const u8, &[_][]const u8{ "ghostty", "-e" });
+    defer allocator.free(expected);
+
+    const got = try get_terminal(allocator, testing.io, config.terminal);
+    defer allocator.free(got);
+
+    try testing.expectEqualStrings(expected[0], got[0]);
+    try testing.expectEqualStrings(expected[1], got[1]);
+}
+
+test "get_terminal full path" {
+    const allocator = testing.allocator;
+
+    const config = Config{ .terminal = "/bin/ghostty" };
+
+    const expected = try allocator.dupe([]const u8, &[_][]const u8{ "/bin/ghostty", "-e" });
     defer allocator.free(expected);
 
     const got = try get_terminal(allocator, testing.io, config.terminal);
