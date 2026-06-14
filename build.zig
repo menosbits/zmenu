@@ -4,6 +4,13 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{ .preferred_optimize_mode = .ReleaseSafe });
 
+    if (target.query.os_tag) |t| {
+        if (t != .linux) {
+            std.debug.print("zmenu is designed for GNU/Linux only; target {s} is not allowed.\n", .{@tagName(t)});
+            return;
+        }
+    }
+
     const zigzag = b.dependency("zigzag", .{
         .target = target,
         .optimize = optimize,
