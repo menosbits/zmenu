@@ -27,6 +27,7 @@ pub const Model = struct {
         self.result_list = zz.List(apps.Application).init(ctx.persistent_allocator);
         self.result_list.show_item_count = true;
         self.result_list.wrap_around = false;
+        self.result_list.cursor_symbol = self.config.marker;
 
         // Modal for error messages
         self.modal = zz.Modal.init();

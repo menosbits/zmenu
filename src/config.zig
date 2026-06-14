@@ -14,4 +14,5 @@ pub const Config = struct {
     prompt: []const u8 = " ",
     mode: Mode = .normal,
     terminal: ?[]const u8 = null,
+    marker: []const u8 = "> ",
 };
