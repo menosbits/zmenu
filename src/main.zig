@@ -31,17 +31,21 @@ pub fn main(init: std.process.Init) !void {
 
     defer allocator.free(config_path);
 
-    const config_file = try std.Io.Dir.cwd().readFileAllocOptions(init.io, config_path, allocator, .unlimited, .@"1", 0);
-    defer allocator.free(config_file);
+    const parsed_config = lbl: {
+        const config_file = std.Io.Dir.cwd().readFileAllocOptions(init.io, config_path, allocator, .unlimited, .@"1", 0) catch {
+            break :lbl Config{};
+        };
+        defer allocator.free(config_file);
 
-    const parsed_config = zon.parse.fromSliceAlloc(Config, allocator, config_file, null, .{ .free_on_error = true }) catch |e| {
-        switch (e) {
-            error.ParseZon => {
-                std.debug.print("[{s}] Could not parse config file!\n", .{err_color.format("Error")});
-                return;
-            },
-            error.OutOfMemory => return e,
-        }
+        break :lbl zon.parse.fromSliceAlloc(Config, allocator, config_file, null, .{ .free_on_error = true }) catch |e| {
+            switch (e) {
+                error.ParseZon => {
+                    std.debug.print("[{s}] Could not parse config file!\n", .{err_color.format("Error")});
+                    return;
+                },
+                error.OutOfMemory => return e,
+            }
+        };
     };
 
     program.model.config = parsed_config;
